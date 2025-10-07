@@ -1,0 +1,23 @@
+{
+  "name": "stock-inventory-backend",
+  "version": "1.0.0",
+  "description": "Distributed System Simulation Backend - Stock Inventory Management",
+  "main": "app.js",
+  "type": "module",
+  "scripts": {
+    "start": "node app.js",
+    "dev": "nodemon app.js"
+  },
+  "keywords": ["distributed-systems", "bully-algorithm", "replication", "fault-tolerance"],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.18.2",
+    "socket.io": "^4.6.1",
+    "cors": "^2.8.5",
+    "uuid": "^9.0.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1"
+  }
+}
