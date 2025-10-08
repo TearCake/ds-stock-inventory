@@ -30,7 +30,8 @@ This project simulates a **distributed stock inventory management system** with 
 - **Data Replication** across servers
 - **Fault Tolerance** and crash recovery
 - **Consistency** in distributed data
-- **Request Distribution** and load balancing
+- **Load Balancing** with multiple algorithms
+- **Request Distribution** and traffic management
 - **Real-time Event Propagation** via WebSockets
 
 Perfect for students learning distributed systems, this hands-on demo makes abstract concepts tangible through interactive visualizations and real-time logs.
@@ -148,6 +149,9 @@ Perfect for students learning distributed systems, this hands-on demo makes abst
 │  │  │   Replication Manager               │    │           │
 │  │  └─────────────────────────────────────┘    │           │
 │  │  ┌─────────────────────────────────────┐    │           │
+│  │  │   Load Balancer (4 Algorithms)      │    │           │
+│  │  └─────────────────────────────────────┘    │           │
+│  │  ┌─────────────────────────────────────┐    │           │
 │  │  │   Log Emitter (Event Broadcasting)  │    │           │
 │  │  └─────────────────────────────────────┘    │           │
 │  └──────────────────────┬──────────────────────┘           │
@@ -177,6 +181,8 @@ Perfect for students learning distributed systems, this hands-on demo makes abst
   - Server crash/restart simulation
   - Current leader indication
   - System statistics
+  - **Demo Load Testing** with 3 presets
+  - **Performance Metrics** visualization
   
 - **Product Management**
   - View all products in inventory
@@ -187,12 +193,14 @@ Perfect for students learning distributed systems, this hands-on demo makes abst
   - View all placed orders
   - Order distribution by server
   - Revenue analytics
+  - Load balancer statistics
   
 - **System Logs**
   - Real-time event logging
   - Color-coded log levels (INFO, SUCCESS, WARNING, ERROR)
   - Filterable and searchable logs
   - Auto-scroll console interface
+  - **Clear logs** functionality
 
 ### Client Shop Interface
 - **Product Catalog**
@@ -204,6 +212,7 @@ Perfect for students learning distributed systems, this hands-on demo makes abst
   - Add/remove products
   - Quantity management
   - Real-time total calculation
+  - Improved responsive layout
   
 - **Checkout Process**
   - Order summary
@@ -216,7 +225,17 @@ Perfect for students learning distributed systems, this hands-on demo makes abst
 - **Fault Tolerance** with automatic failover
 - **Crash Recovery** with data synchronization
 - **Real-time Updates** via WebSockets
-- **Load Distribution** visualization
+- **Load Balancing** with 4 algorithms:
+  - Round Robin
+  - Least Connections
+  - Weighted Distribution
+  - Least Response Time
+- **Performance Monitoring**:
+  - CPU usage simulation
+  - Memory tracking
+  - Response time measurement
+  - Active connections count
+  - Health score calculation
 
 ---
 
@@ -256,6 +275,8 @@ stock-inventory-simulation/
 │   └── utils/
 │       ├── bullyAlgorithm.js           # Leader election logic
 │       ├── replicationManager.js       # Data replication
+│       ├── loadBalancer.js             # Load balancing algorithms
+│       ├── ricartAgrawala.js           # Distributed mutual exclusion
 │       └── logEmitter.js               # Event logging system
 │
 ├── frontend/
@@ -276,7 +297,8 @@ stock-inventory-simulation/
 │       │   │   ├── ProductTable.jsx
 │       │   │   ├── OrderTable.jsx
 │       │   │   ├── SystemLog.jsx
-│       │   │   └── LogEntry.jsx
+│       │   │   ├── LogEntry.jsx
+│       │   │   └── LoadBalancerPanel.jsx
 │       │   └── client/
 │       │       ├── ProductList.jsx
 │       │       ├── ProductCard.jsx
@@ -351,21 +373,31 @@ The frontend will be available at `http://localhost:5173`
    - Current leader is highlighted with 👑
    - Click "Crash" on any server to simulate failure
    - Click "Restart" to bring a crashed server back online
+   - **Test Demo Load** with Light/Medium/Heavy presets
+   - Monitor server performance metrics in real-time
 
 2. **Observing Leader Election**
    - Crash the current leader server
    - Watch the Bully Algorithm elect a new leader
    - System Logs show the election process in detail
 
-3. **Viewing Products & Orders**
+3. **Testing Load Balancing**
+   - Click one of the Demo Load buttons (Light/Medium/Heavy)
+   - Watch orders distributed across healthy servers
+   - Observe performance metrics change (CPU, Memory, Response Time)
+   - System logs show which server handles each order
+
+4. **Viewing Products & Orders**
    - Navigate to Products tab to see inventory
    - Navigate to Orders tab to see all orders
    - Notice "Handled By" shows which server processed each order
+   - See load balancer algorithm used for each order
 
-4. **Monitoring System Logs**
+5. **Monitoring System Logs**
    - Navigate to System Logs tab
    - See real-time events as they happen
    - Color coding: 🟢 Success, 🔵 Info, 🟡 Warning, 🔴 Error
+   - Click "Clear" to clear all logs
 
 ### Using the Client Shop
 
@@ -438,12 +470,30 @@ When leader crashes:
 ```javascript
 // Write operation flow
 Client places order:
-  1. Request goes to leader server
-  2. Leader processes order
-  3. Leader updates local data
-  4. Leader replicates to all active followers
-  5. Each follower updates local copy
-  6. Leader acknowledges to client
+  1. Request goes to load balancer
+  2. Load balancer selects best server
+  3. Selected server forwards to leader
+  4. Leader processes order
+  5. Leader updates local data
+  6. Leader replicates to all active followers
+  7. Each follower updates local copy
+  8. Leader acknowledges to client
+```
+
+### Load Balancing
+
+```javascript
+// Load distribution flow
+Demo load test initiated:
+  1. Generate orders at specified rate
+  2. Load balancer selects server based on algorithm:
+     - Round Robin: Sequential distribution
+     - Least Connections: Route to least busy
+     - Weighted: Based on server capacity
+     - Least Response Time: Route to fastest
+  3. Track performance metrics
+  4. Update health scores
+  5. Replicate data across servers
 ```
 
 ### Real-time Communication
@@ -457,6 +507,8 @@ Frontend ←→ Backend:
   - replicationEvent
   - logUpdate
   - dataSync
+  - startDemoLoad
+  - clearLogs
 ```
 
 ---
@@ -472,6 +524,8 @@ After exploring this project, you will understand:
 ✅ Crash recovery mechanisms  
 ✅ Distributed state management  
 ✅ Event-driven architecture  
+✅ Load balancing algorithms (Round Robin, Least Connections, etc.)  
+✅ Performance monitoring and health checks  
 
 ### Technical Skills
 ✅ Full-stack development (React + Node.js)  
@@ -479,13 +533,15 @@ After exploring this project, you will understand:
 ✅ State management in distributed systems  
 ✅ RESTful API design  
 ✅ Component-based UI architecture  
+✅ Performance metrics tracking  
 
 ### System Design
 ✅ Scalability patterns  
 ✅ Failover strategies  
-✅ Load distribution  
+✅ Load distribution strategies  
 ✅ System monitoring and logging  
 ✅ Client-server architecture  
+✅ Traffic management and testing  
 
 ---
 
@@ -497,6 +553,8 @@ After exploring this project, you will understand:
 4. **Fault Tolerance** - Systems must gracefully handle failures
 5. **Real-time Updates** - WebSockets enable immediate event propagation
 6. **Observability** - Logging is essential for understanding distributed behavior
+7. **Load Balancing** - Proper request distribution optimizes performance and scalability
+8. **Performance Monitoring** - Track metrics to identify bottlenecks and optimize resources
 
 ---
 

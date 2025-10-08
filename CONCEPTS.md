@@ -6,6 +6,7 @@
 3. [Fault Tolerance](#fault-tolerance)
 4. [Consistency Models](#consistency-models)
 5. [CAP Theorem](#cap-theorem)
+6. [Load Balancing](#load-balancing)
 
 ---
 
@@ -345,3 +346,102 @@ This project demonstrates these concepts through:
 - Original CAP Theorem paper by Eric Brewer
 
 **Experiment and Learn!** 🎓
+
+---
+
+## Load Balancing
+
+### What is it?
+**Load Balancing** is the process of distributing incoming requests across multiple servers to optimize resource utilization, maximize throughput, and minimize response time.
+
+### Why Load Balancing?
+
+**Without Load Balancer:**
+```
+All requests → Server 1 (overloaded) 🔥
+              Server 2 (idle) 😴
+              Server 3 (idle) 😴
+```
+
+**With Load Balancer:**
+```
+Requests → Load Balancer → Server 1 ✓
+                         → Server 2 ✓
+                         → Server 3 ✓
+(Evenly distributed)
+```
+
+### Load Balancing Algorithms
+
+#### 1. **Round Robin**
+**How it works**: Distributes requests sequentially in circular order
+
+```javascript
+Request 1 → Server 1
+Request 2 → Server 2
+Request 3 → Server 3
+Request 4 → Server 1 (cycle repeats)
+```
+
+**Pros:** ✅ Simple ✅ Equal distribution  
+**Cons:** ❌ Ignores server load  
+**Best for:** Servers with equal capabilities
+
+#### 2. **Least Connections**
+**How it works**: Routes to server with fewest active connections
+
+```javascript
+Server 1: 5 connections
+Server 2: 3 connections ← New request
+Server 3: 7 connections
+```
+
+**Pros:** ✅ Considers load ✅ Prevents overloading  
+**Cons:** ❌ Requires tracking  
+**Best for:** Varying request durations
+
+#### 3. **Weighted Distribution**
+**How it works**: Assigns weights based on server capacity
+
+```javascript
+Server 1: Weight 3 → 30% of requests
+Server 2: Weight 2 → 20% of requests
+Server 3: Weight 3 → 30% of requests
+```
+
+**Pros:** ✅ Leverages capabilities  
+**Cons:** ❌ Manual configuration  
+**Best for:** Different hardware specs
+
+#### 4. **Least Response Time**
+**How it works**: Routes to server with lowest response time
+
+```javascript
+Server 1: Avg 120ms
+Server 2: Avg 45ms  ← New request
+Server 3: Avg 89ms
+```
+
+**Pros:** ✅ Performance-based ✅ Best UX  
+**Cons:** ❌ Complex tracking  
+**Best for:** Performance-critical apps
+
+### Load Balancer Features in This Project
+
+**Performance Metrics:**
+- CPU Usage (simulated)
+- Memory Usage  
+- Response Time
+- Active Connections
+- Throughput
+- Queue Depth
+
+**Demo Load Testing:**
+- **Light**: 2 orders/sec × 10s = 20 orders
+- **Medium**: 5 orders/sec × 15s = 75 orders
+- **Heavy**: 10 orders/sec × 20s = 200 orders
+
+**Health Monitoring:** Every 5 seconds
+- Server status check
+- Metrics update
+- Health score calculation
