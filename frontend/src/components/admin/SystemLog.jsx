@@ -5,12 +5,21 @@
 
 import React, { useEffect, useRef } from 'react';
 import { useServer } from '../../context/ServerContext';
+import { useSocket } from '../../context/SocketContext';
 import LogEntry from './LogEntry';
 
 const SystemLog = () => {
   const { logs, loading } = useServer();
+  const { socket } = useSocket();
   const logContainerRef = useRef(null);
   const [autoScroll, setAutoScroll] = React.useState(true);
+
+  // Handle clear logs
+  const handleClearLogs = () => {
+    if (socket && socket.connected) {
+      socket.emit('clearLogs');
+    }
+  };
 
   // Auto-scroll to bottom when new logs arrive
   useEffect(() => {
@@ -83,32 +92,44 @@ const SystemLog = () => {
       </div>
 
       {/* Log Console */}
-      <div className="bg-gray-900 rounded-lg shadow-lg p-4">
-        <div className="flex items-center justify-between mb-3">
-          <h3 className="text-white font-bold flex items-center space-x-2">
-            <span>📋</span>
+      <div className="bg-gradient-to-br from-gray-800 to-gray-900 rounded-lg shadow-xl border border-gray-700 p-5">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-white font-bold text-lg flex items-center space-x-2">
+            <span className="text-2xl">📋</span>
             <span>Real-Time Event Log</span>
           </h3>
-          <div className="flex items-center space-x-2">
-            <span className="flex items-center space-x-1 text-green-400 text-xs">
-              <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></span>
+          <div className="flex items-center space-x-3">
+            <span className="flex items-center space-x-2 text-green-400 text-sm font-medium">
+              <span className="w-3 h-3 bg-green-400 rounded-full animate-pulse shadow-lg shadow-green-400/50"></span>
               <span>LIVE</span>
             </span>
+            <button
+              onClick={handleClearLogs}
+              className="text-gray-400 hover:text-white text-xs px-2 py-1 border border-gray-600 rounded hover:border-gray-500 transition-colors"
+            >
+              Clear
+            </button>
           </div>
         </div>
 
         <div
           ref={logContainerRef}
-          className="bg-black rounded p-4 h-96 overflow-y-auto"
+          className="bg-gray-950 rounded-md border border-gray-700 p-4 h-96 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-600 scrollbar-track-gray-800"
+          style={{
+            fontFamily: 'JetBrains Mono, Consolas, Monaco, "Courier New", monospace'
+          }}
         >
           {logs.length === 0 ? (
-            <div className="text-gray-500 text-center py-8">
-              No logs yet. Interact with the system to see events...
+            <div className="text-gray-400 text-center py-12 text-sm">
+              <div className="text-2xl mb-2">🔍</div>
+              <div>No logs yet. Interact with the system to see events...</div>
             </div>
           ) : (
-            logs.map((log) => (
-              <LogEntry key={log.id} log={log} />
-            ))
+            <div className="space-y-1">
+              {logs.map((log) => (
+                <LogEntry key={log.id} log={log} />
+              ))}
+            </div>
           )}
         </div>
       </div>

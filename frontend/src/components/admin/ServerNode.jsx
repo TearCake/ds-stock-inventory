@@ -44,16 +44,65 @@ const ServerNode = ({ server, onCrash, onRestart }) => {
         </div>
       </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-2 gap-2 mb-3 text-sm">
-        <div className="bg-gray-100 p-2 rounded">
-          <div className="text-gray-600">Products</div>
-          <div className="font-bold">{server.productCount || 0}</div>
+      {/* Performance Metrics */}
+      <div className="mb-3">
+        <div className="grid grid-cols-2 gap-2 text-sm mb-2">
+          <div className="bg-gray-100 p-2 rounded">
+            <div className="text-gray-600">Products</div>
+            <div className="font-bold">{server.productCount || 0}</div>
+          </div>
+          <div className="bg-gray-100 p-2 rounded">
+            <div className="text-gray-600">Orders</div>
+            <div className="font-bold">{server.orderCount || 0}</div>
+          </div>
         </div>
-        <div className="bg-gray-100 p-2 rounded">
-          <div className="text-gray-600">Orders</div>
-          <div className="font-bold">{server.orderCount || 0}</div>
-        </div>
+        
+        {/* Load Indicators */}
+        {server.loadBalancer && (
+          <div className="space-y-2">
+            <div className="text-xs text-gray-600 flex justify-between">
+              <span>CPU Usage</span>
+              <span>{Math.round(server.loadBalancer.cpuUsage || 0)}%</span>
+            </div>
+            <div className="w-full bg-gray-200 rounded-full h-2">
+              <div 
+                className="bg-blue-500 h-2 rounded-full transition-all duration-500" 
+                style={{ width: `${Math.min(100, server.loadBalancer.cpuUsage || 0)}%` }}
+              ></div>
+            </div>
+            
+            <div className="text-xs text-gray-600 flex justify-between">
+              <span>Active Connections</span>
+              <span>{server.loadBalancer.activeConnections || 0}</span>
+            </div>
+            <div className="w-full bg-gray-200 rounded-full h-2">
+              <div 
+                className="bg-green-500 h-2 rounded-full transition-all duration-500" 
+                style={{ width: `${Math.min(100, (server.loadBalancer.activeConnections || 0) * 10)}%` }}
+              ></div>
+            </div>
+            
+            <div className="text-xs text-gray-600 flex justify-between">
+              <span>Response Time</span>
+              <span>{Math.round(server.loadBalancer.avgResponseTime || 0)}ms</span>
+            </div>
+            
+            <div className="grid grid-cols-3 gap-1 text-xs">
+              <div className="bg-blue-50 p-1 rounded text-center">
+                <div className="font-bold text-blue-600">{server.loadBalancer.totalRequests || 0}</div>
+                <div className="text-gray-600">Requests</div>
+              </div>
+              <div className="bg-green-50 p-1 rounded text-center">
+                <div className="font-bold text-green-600">{server.loadBalancer.weight || 1}</div>
+                <div className="text-gray-600">Weight</div>
+              </div>
+              <div className="bg-purple-50 p-1 rounded text-center">
+                <div className="font-bold text-purple-600">{Math.round(server.loadBalancer.healthScore || 100)}</div>
+                <div className="text-gray-600">Health</div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Actions */}

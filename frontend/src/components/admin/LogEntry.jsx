@@ -7,42 +7,71 @@ import React from 'react';
 import { formatTimeOnly } from '../../utils/formatTimestamp';
 
 const LogEntry = ({ log }) => {
-  const getLevelColor = () => {
+  const getLevelStyles = () => {
     switch (log.level) {
       case 'SUCCESS':
-        return 'text-log-success bg-green-50 border-green-200';
+        return {
+          bg: 'bg-green-900/30',
+          border: 'border-l-green-400',
+          text: 'text-green-300',
+          badge: 'bg-green-500/20 text-green-300 border-green-400/50'
+        };
       case 'ERROR':
-        return 'text-log-error bg-red-50 border-red-200';
+        return {
+          bg: 'bg-red-900/30',
+          border: 'border-l-red-400',
+          text: 'text-red-300',
+          badge: 'bg-red-500/20 text-red-300 border-red-400/50'
+        };
       case 'WARNING':
-        return 'text-log-warning bg-yellow-50 border-yellow-200';
+        return {
+          bg: 'bg-yellow-900/30',
+          border: 'border-l-yellow-400',
+          text: 'text-yellow-300',
+          badge: 'bg-yellow-500/20 text-yellow-300 border-yellow-400/50'
+        };
       case 'INFO':
       default:
-        return 'text-log-info bg-blue-50 border-blue-200';
+        return {
+          bg: 'bg-blue-900/30',
+          border: 'border-l-blue-400',
+          text: 'text-blue-300',
+          badge: 'bg-blue-500/20 text-blue-300 border-blue-400/50'
+        };
     }
   };
 
   const getLevelIcon = () => {
     switch (log.level) {
       case 'SUCCESS':
-        return '✓';
+        return '✅';
       case 'ERROR':
-        return '✗';
+        return '❌';
       case 'WARNING':
-        return '⚠';
+        return '⚠️';
       case 'INFO':
       default:
-        return 'ℹ';
+        return 'ℹ️';
     }
   };
 
+  const styles = getLevelStyles();
+
   return (
-    <div className={`border-l-4 p-3 mb-2 font-mono text-sm ${getLevelColor()}`}>
+    <div className={`${styles.bg} ${styles.border} border-l-4 rounded-r-md p-3 mb-1 hover:bg-opacity-50 transition-all duration-200`}>
       <div className="flex items-start space-x-3">
-        <span className="flex-shrink-0 font-bold">{getLevelIcon()}</span>
-        <div className="flex-1">
+        <div className="flex items-center space-x-2 flex-shrink-0">
+          <span className="text-sm">{getLevelIcon()}</span>
+          <span className={`px-2 py-0.5 rounded text-xs font-medium border ${styles.badge}`}>
+            {log.level}
+          </span>
+        </div>
+        <div className="flex-1 min-w-0">
           <div className="flex items-start justify-between">
-            <span className="flex-1">{log.message}</span>
-            <span className="flex-shrink-0 text-xs opacity-70 ml-3">
+            <span className={`flex-1 ${styles.text} font-medium text-sm leading-relaxed break-words`}>
+              {log.message}
+            </span>
+            <span className="flex-shrink-0 text-xs text-gray-400 ml-4 font-mono bg-gray-800 px-2 py-0.5 rounded">
               {formatTimeOnly(log.timestamp)}
             </span>
           </div>

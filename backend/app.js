@@ -19,6 +19,7 @@ import { Server } from 'socket.io';
 import cors from 'cors';
 import BullyAlgorithm from './utils/bullyAlgorithm.js';
 import ReplicationManager from './utils/replicationManager.js';
+import LoadBalancer from './utils/loadBalancer.js';
 import { emitLog } from './utils/logEmitter.js';
 import { initializeSocket } from './socket/socketManager.js';
 import productRoutes, { initProductRoutes } from './routes/products.js';
@@ -121,6 +122,9 @@ const bullyAlgorithm = new BullyAlgorithm(servers);
 // Initialize Replication Manager
 const replicationManager = new ReplicationManager(servers);
 
+// Initialize Load Balancer
+const loadBalancer = new LoadBalancer(servers);
+
 // Elect initial leader (highest ID that is active)
 console.log('\n🚀 Initializing Distributed System...\n');
 bullyAlgorithm.initializeLeader();
@@ -130,7 +134,7 @@ initProductRoutes(servers, bullyAlgorithm, replicationManager);
 initOrderRoutes(servers, bullyAlgorithm, replicationManager);
 
 // Initialize Socket.IO
-initializeSocket(io, servers, bullyAlgorithm, replicationManager);
+initializeSocket(io, servers, bullyAlgorithm, replicationManager, loadBalancer);
 
 // ============================================
 // REST API ROUTES
@@ -152,8 +156,32 @@ app.get('/api/servers', (req, res) => {
 
   res.json({
     servers: serverStatus,
-    leader: bullyAlgorithm.getLeader()?.id || null
+    leader: bullyAlgorithm.getLeader()?.id || null,
+    loadBalancer: loadBalancer.getStats()
   });
+});
+
+// Load Balancer API Routes
+app.get('/api/loadbalancer/stats', (req, res) => {
+  res.json(loadBalancer.getStats());
+});
+
+app.post('/api/loadbalancer/algorithm', (req, res) => {
+  const { algorithm } = req.body;
+  const success = loadBalancer.setAlgorithm(algorithm);
+  res.json({ success, currentAlgorithm: loadBalancer.algorithm });
+});
+
+app.post('/api/loadbalancer/weight', (req, res) => {
+  const { serverId, weight } = req.body;
+  loadBalancer.setServerWeight(serverId, weight);
+  res.json({ success: true, serverId, weight });
+});
+
+app.post('/api/loadbalancer/demo-load', (req, res) => {
+  const { ordersPerSecond = 10, durationSeconds = 30 } = req.body;
+  const result = loadBalancer.generateDemoLoad(ordersPerSecond, durationSeconds);
+  res.json({ success: true, ...result });
 });
 
 // Get specific server details

@@ -11,12 +11,13 @@
  * - Data synchronization
  */
 
-import { emitLog, initLogEmitter } from '../utils/logEmitter.js';
+import { emitLog, initLogEmitter, clearLogs } from '../utils/logEmitter.js';
 
 let io = null;
 let servers = null;
 let bullyAlgorithm = null;
 let replicationManager = null;
+let loadBalancer = null;
 
 // Track auto-restart timers for crashed servers
 const autoRestartTimers = new Map();
@@ -24,11 +25,12 @@ const autoRestartTimers = new Map();
 /**
  * Initialize Socket.IO with server instance
  */
-export function initializeSocket(socketIO, serverInstances, bully, replication) {
+export function initializeSocket(socketIO, serverInstances, bully, replication, loadBal) {
   io = socketIO;
   servers = serverInstances;
   bullyAlgorithm = bully;
   replicationManager = replication;
+  loadBalancer = loadBal;
 
   // Initialize log emitter with Socket.IO
   initLogEmitter(io);
@@ -67,6 +69,28 @@ export function initializeSocket(socketIO, serverInstances, bully, replication) 
       broadcastSystemState();
     });
 
+    // Handle load balancer algorithm change
+    socket.on('changeLoadBalancerAlgorithm', (algorithm) => {
+      loadBalancer.setAlgorithm(algorithm);
+      broadcastSystemState();
+    });
+
+    // Handle demo load generation
+    socket.on('startDemoLoad', (config) => {
+      console.log('📥 Received startDemoLoad event:', config);
+      const { ordersPerSecond = 10, durationSeconds = 30 } = config;
+      emitLog('INFO', `🎯 Demo Load Started: ${ordersPerSecond} orders/sec for ${durationSeconds}s`);
+      loadBalancer.generateDemoLoad(ordersPerSecond, durationSeconds, { processDemoOrder });
+    });
+
+    // Handle clear logs request
+    socket.on('clearLogs', () => {
+      console.log('📥 Received clearLogs request');
+      clearLogs();
+      emitLog('INFO', '🧹 System logs cleared');
+      io.emit('logCleared');
+    });
+
     socket.on('disconnect', () => {
       console.log('✗ Client disconnected:', socket.id);
       emitLog('INFO', `Client disconnected: ${socket.id}`);
@@ -74,6 +98,14 @@ export function initializeSocket(socketIO, serverInstances, bully, replication) 
   });
 
   emitLog('SUCCESS', 'Socket.IO initialized and ready');
+  
+  // Start health check interval for load balancer metrics
+  setInterval(() => {
+    if (loadBalancer) {
+      loadBalancer.performHealthCheck();
+      broadcastSystemState();
+    }
+  }, 5000); // Update every 5 seconds
 }
 
 /**
@@ -102,17 +134,41 @@ function sendSystemState(socket) {
 function broadcastSystemState() {
   if (!io) return;
 
+  // Get load balancer stats
+  const loadBalancerStats = loadBalancer.getStats();
+
+  // Collect all orders from all servers (including distributed orders)
+  const allOrders = [];
+  servers.forEach(server => {
+    if (server.orders) {
+      server.orders.forEach(order => {
+        // Avoid duplicates by checking if order already exists
+        if (!allOrders.find(o => o.id === order.id)) {
+          allOrders.push(order);
+        }
+      });
+    }
+  });
+
+  // Sort orders by timestamp (newest first)
+  allOrders.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+
   const state = {
-    servers: servers.map(s => ({
-      id: s.id,
-      status: s.status,
-      isLeader: s.isLeader,
-      productCount: s.products.length,
-      orderCount: s.orders.length
-    })),
+    servers: servers.map(s => {
+      const serverStats = loadBalancerStats.servers.find(ls => ls.id === s.id);
+      return {
+        id: s.id,
+        status: s.status,
+        isLeader: s.isLeader,
+        productCount: s.products.length,
+        orderCount: s.orders.length,
+        loadBalancer: serverStats || null
+      };
+    }),
     products: getLeaderData('products'),
-    orders: getLeaderData('orders'),
-    leader: bullyAlgorithm.getLeader()?.id || null
+    orders: allOrders, // Send all orders from all servers
+    leader: bullyAlgorithm.getLeader()?.id || null,
+    loadBalancer: loadBalancerStats
   };
 
   io.emit('systemState', state);
@@ -292,49 +348,68 @@ function handleServerRestart(serverId) {
 /**
  * Handle order placement from client UI
  */
-function handleOrderPlacement(orderData, socket) {
-  const leader = bullyAlgorithm.getLeader();
-  
-  if (!leader) {
-    emitLog('ERROR', 'No leader available to process order');
-    socket.emit('orderError', { message: 'System unavailable - no leader' });
-    return;
+async function handleOrderPlacement(orderData, socket) {
+  try {
+    // Use load balancer to process the order
+    const result = await loadBalancer.processOrder(orderData);
+    
+    if (!result.success) {
+      emitLog('ERROR', `Order processing failed: ${result.error}`);
+      socket.emit('orderError', { message: result.error });
+      return;
+    }
+
+    const order = result.order;
+
+    emitLog('SUCCESS', `📦 Order ${order.id} placed via Load Balancer (Server ${result.server})`);
+
+    // Replicate to all other servers using replication manager
+    replicationManager.replicate('order', 'create', order, result.server);
+
+    // Broadcast order confirmation
+    io.emit('orderPlaced', order);
+    
+    // Broadcast updated state with load balancer stats
+    broadcastSystemState();
+
+    // Send confirmation to client
+    socket.emit('orderConfirmed', order);
+    
+  } catch (error) {
+    emitLog('ERROR', `Order placement error: ${error.message}`);
+    socket.emit('orderError', { message: 'Internal server error' });
   }
+}
 
-  // Create order object
-  const order = {
-    id: `ORD-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
-    productId: orderData.productId,
-    productName: orderData.productName,
-    quantity: orderData.quantity,
-    totalPrice: orderData.totalPrice,
-    handledBy: leader.id,
-    timestamp: new Date().toISOString(),
-    status: 'completed'
-  };
+/**
+ * Process demo orders through full system pipeline
+ */
+async function processDemoOrder(orderData) {
+  try {
+    // Use load balancer to process the order
+    const result = await loadBalancer.processOrder(orderData);
+    
+    if (!result.success) {
+      emitLog('ERROR', `Demo order processing failed: ${result.error}`);
+      return;
+    }
 
-  // Add order to leader
-  leader.orders.push(order);
+    const order = result.order;
 
-  // Update product stock on leader
-  const product = leader.products.find(p => p.id === orderData.productId);
-  if (product) {
-    product.stock -= orderData.quantity;
+    emitLog('SUCCESS', `🎯 Demo Order ${order.id} (${order.productName} x${order.quantity}) → Server ${result.server}`);
+
+    // Replicate to all other servers using replication manager
+    replicationManager.replicate('order', 'create', order, result.server);
+
+    // Broadcast order confirmation to all clients
+    io.emit('orderPlaced', order);
+    
+    // Broadcast updated state with load balancer stats
+    broadcastSystemState();
+    
+  } catch (error) {
+    emitLog('ERROR', `Demo order error: ${error.message}`);
   }
-
-  emitLog('SUCCESS', `📦 Order ${order.id} placed successfully (handled by Server ${leader.id})`);
-
-  // Replicate to all other servers
-  replicationManager.replicate('order', 'create', order, leader.id);
-
-  // Broadcast order confirmation
-  io.emit('orderPlaced', order);
-  
-  // Broadcast updated state
-  broadcastSystemState();
-
-  // Send confirmation to client
-  socket.emit('orderConfirmed', order);
 }
 
 /**
